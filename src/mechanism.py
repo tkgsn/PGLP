@@ -2,6 +2,8 @@ import numpy as np
 from scipy.spatial import ConvexHull, convex_hull_plot_2d
 import scipy
 from shapely.geometry import Point, Polygon
+import math
+import copy
 
 class Mechanism():
     def __init__(self):
@@ -17,9 +19,16 @@ class Mechanism():
     def load(self, oh_deltaXs, query):
         self.is_load = True
         
+        query = copy.deepcopy(query)
+        ##### Strange operation!!!!!!!!!!
+        for i in range(2500):
+            if (math.floor(i/50) % 2) ==1:
+                query[0, i] += 0.05
+        
         self.data_dim = len(query[:,0])
         
         self.query = query
+        
         self.oh_deltaXs = oh_deltaXs
         
         self.cell_deltaXs = self._process(oh_deltaXs)
@@ -102,9 +111,11 @@ class IsotropicMechanism(Mechanism):
         if len(self.oh_deltaXs)==1:
             return
         
-        self._make_sensitivity_hull()
+        self.sensitivity_hull = self._make_sensitivity_hull(self.cell_deltaXs)
         self._make_convex_hull()
         self.T, self.T_i = self._compute_isotropic_transformation()
+        
+        print("T:", self.T)
         
         self.transformed_vertice = self._transform(self.vertice)
         self.transformed_deltaXs = self._transform(self.cell_deltaXs)
@@ -134,12 +145,45 @@ class IsotropicMechanism(Mechanism):
             pos_dist[state_no] = prob
         
         return pos_dist
+
     
     def _transform(self, vertice):
         return np.dot(self.T, vertice.T).T
     
-        
     def _k_norm(self, vec):
+
+        x,y = vec
+        vec = Point(vec)
+        
+        n_vertice = len(self.transformed_vertice)
+        if n_vertice == 2:
+            ks = (vec / self.transformed_vertice)
+            k = ks[0][0]
+            if np.isnan(k):
+                k = ks[0][1]
+            return abs(k)
+        
+        a = 0
+        k = 0
+        
+        for i in range(n_vertice):
+            j = i+1
+            if j == n_vertice:
+                j = 0
+            v1x, v1y = self.transformed_vertice[i][0], self.transformed_vertice[i][1]
+            v2x, v2y = self.transformed_vertice[j][0], self.transformed_vertice[j][1]
+            
+            b = (v2x-(x/y)*v2y)/((x/y)*(v1y-v2y)-v1x+v2x)
+            if b>=0 and b<=1 :
+                a = b/y*(v1y-v2y)+v2y/y
+            if a > 0:
+                k = 1/a
+
+        return k
+    
+
+        
+    def _k_norm_old(self, vec):
         k = 1
 
         vec = Point(vec)
@@ -195,6 +239,8 @@ class IsotropicMechanism(Mechanism):
             self.transformed_vertice = self.vertice - mean_vertice
             return T, T
         
+        print("vertice", self.vertice)
+        
         samples = []
         for _ in range(self.iso_trans_sample_size):
             random_length = np.random.rand() * self.total_length
@@ -226,20 +272,20 @@ class IsotropicMechanism(Mechanism):
         
         return T, T_i
     
-    def _make_sensitivity_hull(self):
+    def _make_sensitivity_hull(self, cell_deltaXs):
         
         sensitivity_hull = []
         
-        size = len(self.cell_deltaXs)
+        size = len(cell_deltaXs)
         for i in range(size):
             for j in range(i,size):
                 if i == j:
                     continue
                     
-                sensitivity_hull.append(self.cell_deltaXs[i] - self.cell_deltaXs[j])
-                sensitivity_hull.append(self.cell_deltaXs[j] - self.cell_deltaXs[i])
+                sensitivity_hull.append(cell_deltaXs[i] - cell_deltaXs[j])
+                sensitivity_hull.append(cell_deltaXs[j] - cell_deltaXs[i])
                 
-        self.sensitivity_hull = np.array(sensitivity_hull)
+        return np.array(sensitivity_hull)
 
     def _make_convex_hull(self):
         

@@ -1,5 +1,6 @@
 #Generate tragectries
 import numpy as np
+import copy
 
 
 class TrajectoryGenerator():
@@ -49,12 +50,13 @@ class TrajectoryGenerator():
         self.size = len(self.transition_mat)
     
     def _threash(self, transition_mat, threashold):
+        transition_mat = copy.deepcopy(transition_mat)
         transition_mat =  transition_mat * (transition_mat >= threashold)
         transition_mat =  self._normalize(transition_mat)
         return transition_mat
     
     def _normalize(self, transition_mat):
-        transition_mat = transition_mat[:]
+        transition_mat = copy.deepcopy(transition_mat)
         for i, transition_prob in enumerate(transition_mat):
             sum_ = np.sum(transition_prob)
             if sum_ != 0:
