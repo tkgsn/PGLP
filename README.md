@@ -11,7 +11,7 @@
 - [ ] methods for generating synthetic exampled graphs
 
 
-- [ ] implement Exponential-like Mechanism (ELM)
+- [x] implement Exponential-like Mechanism (ELM)
 
 
 - [ ] implement Scaled Laplace
