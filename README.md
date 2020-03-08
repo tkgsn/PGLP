@@ -14,7 +14,7 @@
 - [x] implement Exponential-like Mechanism (ELM)
 
 
-- [ ] implement Scaled Laplace
+- [x] implement Scaled Laplace
 
 
 - [ ] implement of scaled PIM.
