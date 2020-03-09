@@ -12,15 +12,15 @@
 
 
 - [x] implement Exponential-like Mechanism (ELM)
--- [] test and verify
+  - [ ] test and verify
 
 
 - [x] implement Scaled Laplace
--- [] test and verify
+  - [ ] test and verify
 
 
 - [x] implement of scaled PIM.
--- [] test and verify
+  - [ ] test and verify
 
 
 - [ ] compare runtime between mechanism (ref to 5.2.1)
