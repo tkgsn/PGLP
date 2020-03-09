@@ -15,11 +15,11 @@
   - [ ] test and verify
 
 
-- [x] implement Scaled Laplace
+- [x] implement Scaled Laplace (S-LM).
   - [ ] test and verify
 
 
-- [x] implement of scaled PIM.
+- [x] implement of scaled PIM (S-PIM).
   - [ ] test and verify
 
 
