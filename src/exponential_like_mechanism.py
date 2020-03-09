@@ -8,14 +8,30 @@ class ExponentialLikeMechanism(Mechanism.Mechanism):
     def __init__(self):
         print("exponential-like-mechanism")
         
-    def perturb(self):
-        pass
+    def perturb(self, location):
+        ind = self._surrogate(np.array(location))
+        distribution = self.dist[ind]
+        choiced_ind = np.random.choice(range(len(self.nodes)), p=distribution)
+        return self.nodes[choiced_ind][1]
+        
     
     def inference(self):
         pass
     
+    def _surrogate(self, location):
+        min_distance = np.float("inf")
+        min_ind = 0
+        for i, (_, loc) in enumerate(self.nodes):
+            distance = np.linalg.norm(loc - location)
+            if distance < min_distance:
+                min_distance = distance
+                min_ind = i
+                
+        return min_ind
+    
     def load(self, name):
-        self.mat, self.nodes = joblib.load(os.path.join("data", name + ".jbl"))
+        data = joblib.load(os.path.join("data", name + ".jbl"))
+        self.mat, self.nodes, self.locations = data["weight_mat"], data["nodes"], data["locations"]
         self._metrize(self.mat)
         
     def build_distribution(self, epsilon):
