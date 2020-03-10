@@ -12,9 +12,8 @@ class GraphGenerator():
     
     def save(self):
         savedir = os.path.join("data", self.name + ".jbl")
-        joblib.dump(filename=savedir, value={"weight_mat":self.wig, "nodes":self.nodes, "locations":self.sd})
+        joblib.dump(filename=savedir, value={"weight_mat":self.wig, "locations":self.nodes, "distance_mat":self.sd})
         
-    
     
 class GeoIGraphGenerator(GraphGenerator):
     def __init__(self, map_size=4000, sqrt_n_grids=10):
@@ -56,5 +55,31 @@ class GeoIGraphGenerator(GraphGenerator):
         for i in self.cell_ids[:-1]:
             for j in self.cell_ids[i+1:]:
                 self.wig[i,j] = self.G.edges[(i,j)]["length"]
+                
+        self.wig += self.wig.T
+        
+class UniformGraphGenerator(GeoIGraphGenerator):
+
+    def make_wig(self):
+        self.name = f"mapsize{self.map_size}_n_grids{self.n_grids}_uniform"
+        self.uniform=True
+        self.wig = np.zeros((self.n_grids, self.n_grids))
+        for i in self.cell_ids[:-1]:
+            for j in self.cell_ids[i+1:]:
+                self.wig[i,j] = 1
+                
+        self.wig += self.wig.T
+        
+class RandomGraphGenerator(GeoIGraphGenerator):
+
+    def make_wig(self):
+        choice = [1,float("nan")]
+        
+        self.name = f"mapsize{self.map_size}_n_grids{self.n_grids}_random"
+        self.uniform=True
+        self.wig = np.zeros((self.n_grids, self.n_grids))
+        for i in self.cell_ids[:-1]:
+            for j in self.cell_ids[i+1:]:
+                self.wig[i,j] = np.random.choice(choice)
                 
         self.wig += self.wig.T

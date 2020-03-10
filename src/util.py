@@ -12,9 +12,10 @@ def load_traj(datadir):
 
 def oh2id(oh_loc):
     return np.where(oh_loc==1)[0][0]
-    
-    
 
+def ohs2coors(oh_locs):
+    return np.dot(self.query, oh_locs.T).T
+    
 def make_oh_traj(traj):
     oh_traj = []
     for i in traj:

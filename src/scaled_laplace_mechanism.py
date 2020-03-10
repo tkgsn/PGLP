@@ -13,32 +13,24 @@ class ScaledLaplaceMechanism(Mechanism.Mechanism):
     
     def inference(self):
         pass
-    
-    def load(self, name):
-        data = joblib.load(os.path.join("data", name + ".jbl"))
-        self.mat, self.nodes, self.sd = data["weight_mat"], data["nodes"], data["locations"]
-        self.locations = np.array(self.nodes)[:,1]
         
     def _compute_sensitivity(self):
-        n_nodes = len(self.nodes)
+        n_locations = len(self.locations)
+        
         difs = []
-        for i in range(n_nodes):
-            for j in range(i+1, n_nodes):
-                if not np.isnan(self.mat[i,j]):
-                    difs.append(np.abs(self.locations[i] - self.locations[j]) / self.mat[i,j])
+        for i in range(n_locations-1):
+            for j in range(i+1, n_locations):
+                if not np.isnan(self.weight_mat[i,j]):
+                    difs.append(np.abs(self.coords[i] - self.coords[j]) / self.weight_mat[i,j])
         difs = np.array(difs)
         
-        x_sensitivity = np.max(difs[:,0])
-        y_sensitivity = np.max(difs[:,1])
-        
-        self.sensitivity = [x_sensitivity, y_sensitivity]
-            
+        sensitivity = np.max(np.linalg.norm(difs, ord=1, axis=1))
+
+        self.sensitivity = sensitivity
         
     def build_distribution(self, epsilon):
         self._compute_sensitivity()
         def laplace():
-            x = np.random.laplace(0, self.sensitivity[0]/epsilon, 1)[0]
-            y = np.random.laplace(0, self.sensitivity[1]/epsilon, 1)[0]
-            return np.array([x, y])
+            return np.random.laplace(0, self.sensitivity/epsilon, 2)
         
         self.laplace_generator =  laplace

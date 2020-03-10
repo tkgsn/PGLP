@@ -11,8 +11,8 @@ class ExponentialLikeMechanism(Mechanism.Mechanism):
     def perturb(self, location):
         ind = self._surrogate(np.array(location))
         distribution = self.dist[ind]
-        choiced_ind = np.random.choice(range(len(self.nodes)), p=distribution)
-        return self.nodes[choiced_ind][1]
+        choiced_ind = np.random.choice(range(len(self.locations)), p=distribution)
+        return self.locations[choiced_ind][1]
         
     
     def inference(self):
@@ -21,7 +21,7 @@ class ExponentialLikeMechanism(Mechanism.Mechanism):
     def _surrogate(self, location):
         min_distance = np.float("inf")
         min_ind = 0
-        for i, (_, loc) in enumerate(self.nodes):
+        for i, (_, loc) in enumerate(self.locations):
             distance = np.linalg.norm(loc - location)
             if distance < min_distance:
                 min_distance = distance
@@ -31,13 +31,14 @@ class ExponentialLikeMechanism(Mechanism.Mechanism):
     
     def load(self, name):
         data = joblib.load(os.path.join("data", name + ".jbl"))
-        self.mat, self.nodes, self.locations = data["weight_mat"], data["nodes"], data["locations"]
-        self._metrize(self.mat)
+        self.weight_mat, self.locations, self.distance_mat = data["weight_mat"], data["locations"], data["distance_mat"]
+        self._metrize(self.weight_mat)
         
     def build_distribution(self, epsilon):
-        alpha = np.exp(- epsilon * self.mat)
+        alpha = np.exp(- epsilon * self.weight_mat)
         sum_alpha = np.nansum(alpha, axis=1).reshape(-1,1)
         self.dist = alpha / sum_alpha
+        self.dist[np.isnan(self.dist)] = 0
 
     def _metrize(self, mat):
 
