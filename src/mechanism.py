@@ -18,9 +18,13 @@ class Mechanism():
         pass
     
     def load_from_jbl(self, name):
-        data = joblib.load(os.path.join("data", name + ".jbl"))
+        data = joblib.load(os.path.join(os.path.dirname(__file__), "..", "data", name + ".jbl"))
         self.weight_mat, self.locations, self.distance_mat = data["weight_mat"], data["locations"], data["distance_mat"]
-        self.coords = np.array(self.locations)[:,1]
+        self.names = np.array(self.locations)[:,0]
+        self.coords = np.zeros((len(self.locations),2))
+        for i, coord in enumerate(np.array(self.locations)[:,1]):
+            self.coords[i,:] = coord
+            
         self.is_load = True
     
     def load(self, oh_deltaXs, query):
@@ -110,6 +114,10 @@ class PlanarIsotropicMechanism(Mechanism):
     
     def __init__(self, iso_trans_sample_size=5000):
         super(PlanarIsotropicMechanism, self).__init__()
+        
+        self.multiplier = 100
+        self.hull_coords = np.array([[i,j] for i in range(-self.multiplier,self.multiplier) for j in range(-self.multiplier,self.multiplier)])
+        
         self.iso_trans_sample_size = iso_trans_sample_size
         
     def inference(self, prior_dist, cell_z):
@@ -201,7 +209,7 @@ class PlanarIsotropicMechanism(Mechanism):
         oh_true_loc = self._surrogate(oh_true_loc)
         cell_true_loc = self._process(oh_true_loc)
         
-        sample = self._sample_point_from_hull(self.transformed_vertices)
+        sample = self._sample_point_from_body(self.transformed_vertices)
         noise = np.random.gamma(3, 1/self.epsilon, 1)
         
         z = noise * np.dot(self.T_i, sample.T)
@@ -230,6 +238,7 @@ class PlanarIsotropicMechanism(Mechanism):
         sample = left_vertex + (right_vertex - left_vertex) * temp_total_length / segment
         
         return sample
+    
 
     def _compute_isotropic_transformation(self, vertices):
         
@@ -309,3 +318,25 @@ class PlanarIsotropicMechanism(Mechanism):
                             max_distance = distance
                             edges = (i,j)
                 return np.array([vertices[edges[0]], vertices[edges[1]]])
+
+
+
+    def _sample_point_from_body(self, vertices):
+
+        x, y = vertices[:,0], vertices[:,1]
+        
+        left = np.min(x)
+        right = np.max(x)
+        lower = np.min(y)
+        upper = np.max(y)
+
+        coef = self.multiplier / np.max([[right-left], [upper-lower]])
+
+        try:
+            hull = scipy.spatial.Delaunay(coef * vertices)
+        except:
+            return self._sample_point_from_hull(vertices)
+
+        coords = self.hull_coords[hull.find_simplex(self.hull_coords)>=0] / coef
+
+        return coords[np.random.randint(len(coords))]

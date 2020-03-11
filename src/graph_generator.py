@@ -11,7 +11,7 @@ class GraphGenerator():
         pass
     
     def save(self):
-        savedir = os.path.join("data", self.name + ".jbl")
+        savedir = os.path.join(os.path.join(os.path.dirname(__file__), "..", "data", self.name + ".jbl"))
         joblib.dump(filename=savedir, value={"weight_mat":self.wig, "locations":self.nodes, "distance_mat":self.sd})
         
     
