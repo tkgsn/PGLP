@@ -209,35 +209,40 @@ class PlanarIsotropicMechanism(Mechanism):
         oh_true_loc = self._surrogate(oh_true_loc)
         cell_true_loc = self._process(oh_true_loc)
         
-        sample = self._sample_point_from_body(self.transformed_vertices)
+        sample = self._sample_point_from_body(self.transformed_vertices)[0]
         noise = np.random.gamma(3, 1/self.epsilon, 1)
         
         z = noise * np.dot(self.T_i, sample.T)
         
         return cell_true_loc + z
     
-    def _sample_point_from_hull(self, vertices, total_length=None, segments=None):
+    def _sample_point_from_boundary(self, vertices, n_sample = 1, total_length=None, segments=None):
         if total_length is None:
             total_length, segments = self._compute_total_length_of_full(vertices)
+            
+        samples = np.zeros((n_sample, 2))
+            
+        for i in range(n_sample):
 
-        random_length = np.random.rand() * total_length
-        temp_total_length = random_length
-        for seg_i, segment in enumerate(segments):
-            if temp_total_length - segment < 0:
-                break
-            temp_total_length = temp_total_length - segment
+            random_length = np.random.rand() * total_length
+            temp_total_length = random_length
+            for seg_i, segment in enumerate(segments):
+                if temp_total_length - segment < 0:
+                    break
+                temp_total_length = temp_total_length - segment
+
+            if seg_i == len(segments)-1:
+                seg_j = 0
+            else:
+                seg_j = seg_i+1
+
+            left_vertex = vertices[seg_i]
+            right_vertex = vertices[seg_j]
+
+            #sample = left_vertex + (right_vertex - left_vertex) * temp_total_length / segment
+            samples[i,:] = left_vertex + (right_vertex - left_vertex) * temp_total_length / segment
         
-        if seg_i == len(segments)-1:
-            seg_j = 0
-        else:
-            seg_j = seg_i+1
-
-        left_vertex = vertices[seg_i]
-        right_vertex = vertices[seg_j]
-
-        sample = left_vertex + (right_vertex - left_vertex) * temp_total_length / segment
-        
-        return sample
+        return samples
     
 
     def _compute_isotropic_transformation(self, vertices):
@@ -246,15 +251,9 @@ class PlanarIsotropicMechanism(Mechanism):
             T = np.array([[1,0],[0,1]])
             mean_vertices = np.average(vertices, axis=0)
             return T, T
-        
-        samples = np.zeros((self.iso_trans_sample_size, len(vertices[0])))
-        total_length, segments = self._compute_total_length_of_full(vertices)
-        
-        for sample_i in range(self.iso_trans_sample_size):
-            samples[sample_i, :] = self._sample_point_from_hull(vertices, total_length, segments)
+            
+        samples = self._sample_point_from_body(vertices, n_sample=self.iso_trans_sample_size)
 
-        mean_samples = np.average(samples, axis=0)
-        
         T = np.average([np.dot(sample.reshape(2,-1), sample.reshape(2,-1).T) for sample in samples], axis=0)
         T = np.linalg.inv(T)
         T = scipy.linalg.sqrtm(T)
@@ -321,7 +320,7 @@ class PlanarIsotropicMechanism(Mechanism):
 
 
 
-    def _sample_point_from_body(self, vertices):
+    def _sample_point_from_body(self, vertices, n_sample=1):
 
         x, y = vertices[:,0], vertices[:,1]
         
@@ -334,9 +333,11 @@ class PlanarIsotropicMechanism(Mechanism):
 
         try:
             hull = scipy.spatial.Delaunay(coef * vertices)
+            
+            coords = self.hull_coords[hull.find_simplex(self.hull_coords)>=0] / coef
+
+            random_inds = np.random.randint(len(coords), size=n_sample)
+
+            return coords[random_inds]
         except:
-            return self._sample_point_from_hull(vertices)
-
-        coords = self.hull_coords[hull.find_simplex(self.hull_coords)>=0] / coef
-
-        return coords[np.random.randint(len(coords))]
+            return self._sample_point_from_boundary(vertices, n_sample=n_sample)
