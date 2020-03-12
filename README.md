@@ -21,7 +21,7 @@
 
 - [x] implement of scaled PIM (S-PIM).
   - [x] test and verify
-  - I must study the parameter k of gamma distribution (why k=3?)
+  - ~~I must study the parameter k of gamma distribution (why k=3?)~~
 
 
 - [ ] compare runtime between mechanism (ref to 5.2.1)
