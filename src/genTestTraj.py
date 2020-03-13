@@ -1,6 +1,7 @@
 #Generate tragectries
 import numpy as np
 import copy
+import math
 
 
 class TrajectoryGenerator():
@@ -29,9 +30,13 @@ class TrajectoryGenerator():
             next_posi = np.random.choice(range(self.size), p=dist[0])
             
             start = next_posi
-        return traj        
+        return traj     
     
-    def posterior_distribution(self, prior):
+    def process(self, oh_locs):
+        return np.dot(self.query, oh_locs.T).T
+        
+    
+    def compute_posterior_distribution(self, prior):
         if self.transition_mat is None:
             print("you must initially load")
         
@@ -43,11 +48,17 @@ class TrajectoryGenerator():
         return posterior
         
     
-    def load(self, path_transition_mat, length_traj=500, size_traj=100, threashold=1e-4, output_path="results/out.txt"):
+    def load(self, path_transition_mat, query, length_traj=500, size_traj=100, threashold=1e-4, output_path="results/out.txt"):
         
         transition_mat = np.loadtxt(path_transition_mat)
         self.transition_mat = self._threash(transition_mat, threashold)
         self.size = len(self.transition_mat)
+        
+        self.query = copy.deepcopy(query)
+        ##### Strange operation!!!!!!!!!!
+        for i in range(2500):
+            if (math.floor(i/50) % 2) ==1:
+                self.query[0, i] += 0.05
     
     def _threash(self, transition_mat, threashold):
         transition_mat = copy.deepcopy(transition_mat)
@@ -82,5 +93,3 @@ class TrajectoryGenerator():
                 
         self.transition_mat[2485][2435] += 0.1
         self.transition_mat = self._normalize(self.transition_mat)
-            
-        #??(2486,2436)

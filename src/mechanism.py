@@ -11,8 +11,13 @@ class Mechanism():
     def __init__(self):
         pass
     
-    def perturb(self):
-        pass
+    def perturb(self, cell_true_loc):
+        if not self.is_load:
+            raise("you should initially load")
+        
+        cell_true_loc = self._surrogate(cell_true_loc)
+        
+        return cell_true_loc + self.noise_generator()
     
     def inference(self):
         pass
@@ -27,87 +32,87 @@ class Mechanism():
             
         self.is_load = True
     
-    def load(self, oh_deltaXs, query):
+    def load(self, coords, state_nos, n_locations=2500):
         self.is_load = True
         
-        query = copy.deepcopy(query)
-        ##### Strange operation!!!!!!!!!!
-        for i in range(2500):
-            if (math.floor(i/50) % 2) ==1:
-                query[0, i] += 0.05
+        self.coords = coords
+        self.state_nos = state_nos
+      
+
+    def _check_included(self, cell_true_loc):
+        return cell_true_loc in self.coords
+
+    def _surrogate(self, cell_true_loc):
         
-        self.data_dim = len(query[:,0])
-        
-        self.query = query
-        
-        self.oh_deltaXs = oh_deltaXs
-        
-        self.coords = self._process(oh_deltaXs)
-    
-        
-    def _check_included(self, oh_true_loc):
-        state_no = np.where(oh_true_loc == 1)[0]
-        state_no_deltaXs = [np.where(oh_deltaX == 1)[0][0] for oh_deltaX in self.oh_deltaXs]
-        
-        return state_no in state_no_deltaXs
-    
-    def _process(self, oh_locs):
-        return np.dot(self.query, oh_locs.T).T
-        
-        
-    def _surrogate(self, oh_true_loc):
-        
-        if not self._check_included(oh_true_loc):
-            min_distance = float("inf")
+        if not self._check_included(cell_true_loc):
             
-            cell_true_loc = self._process(oh_true_loc)
-            
-            for oh_deltaX in self.oh_deltaXs:
-                cell_deltaX = self._process(oh_deltaX)
-                distance = np.linalg.norm(cell_true_loc - cell_deltaX)
-                if distance < min_distance:
-                    cell_true = cell_deltaX
-                    oh_true_loc = oh_deltaX
+            surrogated_loc = self._find_nearest_loc(cell_true_loc)
                     
-            print("surrogate by:", cell_true)
+            print("surrogate by:", surrogated_loc)
                     
-        return oh_true_loc
+            return surrogated_loc
+        
+        else:
+            return cell_true_loc
+
+    def _find_nearest_loc(self, cell_loc):
+        
+        min_distance = float("inf")
+        
+        for coord in self.coords:
+            distance = np.linalg.norm(cell_loc - coord)
+            if distance < min_distance:
+                min_distance = distance
+                surrogated_loc = coord
+        
+        return surrogated_loc
+    
+    def _make_sensitivities(self, coords):
+        
+        sensitivities = []
+        
+        size = len(coords)
+        for i in range(size-1):
+            for j in range(i+1,size):
+                sensitivities += self._compute_sensitivity(coords, i, j)
+                
+        return np.array(sensitivities)
+    
+    def _compute_sensitivity(self, coords, i, j):
+        return [(coords[i] - coords[j]), (coords[j] - coords[i])]
         
 
 class LaplaceMechanism(Mechanism):
     
-    def __init__(self):
-        super(LaplaceMechanism, self).__init__()
-        self.sensitivity = self._l1_sensitivity(oh_deltaXs, query)
+  
+    def inference(self, prior_dist, perturbed_loc):
+        
+        l1_norms = np.linalg.norm(self.coords - perturbed_loc, ord=1, axis=1)
+        
+        alpha = np.exp(-self.epsilon * l1_norms / self.sensitivity) * prior_dist[self.state_nos]
+        pos_dist = alpha / np.sum(alpha)
+        
+        post_distribution = np.zeros(len(prior_dist))
+        post_distribution[self.state_nos] = pos_dist
+        
+        return post_distribution
+            
     
-    def perturb(self, epsilon, oh_true_loc):
-        if not self.is_load:
-            raise("you should initially load")
-        
-        oh_true_loc = self._surrogate(oh_true_loc)
-        cell_true = np.dot(self.query, oh_true_loc.T)
-        
-        noise = self.sensitivity * self._laplace_noise(epsilon)
-        
-        z = cell_true + noise
-        return z
-        
-    def inference(self):
-        pass
-
-    def _l1_sensitivity(self):
-        
-        cell_deltas = np.dot(self.query, self.oh_deltaXs.T)
-        size = len(self.oh_deltaXs[0])
-        
-        l1_norms = [np.linalg.norm((cell_deltas[:,i] - cell_deltas[:,j]), ord=1) for i in range(size) for j in range(size)]
-        
-        return np.max(l1_norms)
     
-    def _laplace_noise(self, epsilon): 
-        lap = np.random.exponential(1/epsilon, size=(self.data_dim, 1)) - np.random.exponential(1/epsilon, size=(self.data_dim, 1))
+    def build_distribution(self, epsilon):
+        sensitivities = self._make_sensitivities(self.coords)
+        self.sensitivity = self._l1_sensitivity(sensitivities)
+        self.epsilon = epsilon
         
-        return lap
+        def laplace():
+            return np.random.laplace(0, self.sensitivity/self.epsilon, 2)
+        
+        self.noise_generator =  laplace
+        
+        
+    def _l1_sensitivity(self, sensitivities):
+        
+        return np.max(np.linalg.norm(sensitivities, ord=1, axis=1))
     
     
 class PlanarIsotropicMechanism(Mechanism):
@@ -122,17 +127,17 @@ class PlanarIsotropicMechanism(Mechanism):
         
     def inference(self, prior_dist, cell_z):
         
-        if len(self.oh_deltaXs) == 1:
-            return self.oh_deltaXs[0]
+        pos_dist = np.zeros(len(prior_dist))
+        pos_dist[self.state_nos] = 1
         
-        transformed_z = self._transform(cell_z)
-
-        pos_dist = np.sum(self.oh_deltaXs, axis=0)
-        state_nos = np.where(pos_dist == 1)[0]
+        if len(self.state_nos) == 1:
+            return pos_dist
+        
+        transformed_z = self._transform(cell_z.reshape(-1,2))[0]
         
         inference_probs = {}
 
-        for state_no, transformed_coord in zip(state_nos, self.transformed_coords):
+        for state_no, transformed_coord in zip(self.state_nos, self.transformed_coords):
             k = self._k_norm((transformed_z - transformed_coord))
             inference_probs[state_no] = np.exp(-self.epsilon * k) * prior_dist[state_no]
 
@@ -199,22 +204,17 @@ class PlanarIsotropicMechanism(Mechanism):
         self.sensitivities = sensitivities
         self.vertices = vertices
         
-    def perturb(self, oh_true_loc):
-        if not self.is_load:
-            raise("you should initially load")
-    
-        if len(self.oh_deltaXs) == 1:
-            return self._process(oh_true_loc)
+        def k_norm_generator():
+            
+            sample = self._sample_point_from_body(self.transformed_vertices)[0]
+            noise = np.random.gamma(3, 1/self.epsilon, 1)
+
+            z = noise * np.dot(self.T_i, sample.T)
+
+            return z
         
-        oh_true_loc = self._surrogate(oh_true_loc)
-        cell_true_loc = self._process(oh_true_loc)
+        self.noise_generator = k_norm_generator
         
-        sample = self._sample_point_from_body(self.transformed_vertices)[0]
-        noise = np.random.gamma(3, 1/self.epsilon, 1)
-        
-        z = noise * np.dot(self.T_i, sample.T)
-        
-        return cell_true_loc + z
     
     def _sample_point_from_boundary(self, vertices, n_sample = 1, total_length=None, segments=None):
         if total_length is None:
@@ -238,8 +238,7 @@ class PlanarIsotropicMechanism(Mechanism):
 
             left_vertex = vertices[seg_i]
             right_vertex = vertices[seg_j]
-
-            #sample = left_vertex + (right_vertex - left_vertex) * temp_total_length / segment
+            
             samples[i,:] = left_vertex + (right_vertex - left_vertex) * temp_total_length / segment
         
         return samples
@@ -265,20 +264,6 @@ class PlanarIsotropicMechanism(Mechanism):
             T_i = np.array([[1,0],[0,1]]) 
             
         return T, T_i
-    
-    def _make_sensitivities(self, coords):
-        
-        sensitivities = []
-        
-        size = len(coords)
-        for i in range(size-1):
-            for j in range(i+1,size):
-                sensitivities += self._compute_sensitivity(coords, i, j)
-                
-        return np.array(sensitivities)
-    
-    def _compute_sensitivity(self, coords, i, j):
-        return [(coords[i] - coords[j]), (coords[j] - coords[i])]
         
         
     def _compute_total_length_of_full(self, vertices):

@@ -19,12 +19,3 @@ class ScaledPlanarIsotropicMechanism(mec.PlanarIsotropicMechanism):
             return [[0,0]]
         
         return [(coords[i] - coords[j]) / w_ij, (coords[j] - coords[i]) / w_ij]
-    
-    def perturb(self, true_loc):
-        
-        sample = self._sample_point_from_body(self.transformed_vertices)[0]
-        noise = np.random.gamma(3, 1/self.epsilon, 1)
-        
-        z = noise * np.dot(self.T_i, sample.T)
-        
-        return true_loc + z
