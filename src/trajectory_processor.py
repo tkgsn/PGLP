@@ -32,14 +32,12 @@ class TrajectoryProcessor():
             start = next_posi
         return traj   
     
-    def compute_possible_set_with_graph(self, prior, graph):
+    def compute_possible_set(self, prior):
         
         state_nos = np.where(prior>0)[0]
         n_possible_loc = len(state_nos)
         
-        #possible_set = np.zeros((n_possible_loc, self.size))
-        #for i, state_no in enumerate(state_nos):
-        #    possible_set[i,state_no] = 1
+        print("n_possible_loc", n_possible_loc)
             
         return state_nos
         
@@ -131,7 +129,7 @@ class TrajectoryProcessor():
     def state2loc(self, states):
         n_states = len(states)
         oh_states = np.zeros((n_states, self.size))
-        for i, state in enumerate(range(n_states)):
+        for i, state in enumerate(states):
             oh_states[i, state] = 1
         
         return self.process(oh_states)

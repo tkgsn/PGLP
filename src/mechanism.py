@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.spatial import ConvexHull, convex_hull_plot_2d
 import scipy
-#from shapely.geometry import Point, Polygon
 import math
 import copy
 import joblib
@@ -167,7 +166,6 @@ class PlanarIsotropicMechanism(Mechanism):
     def _k_norm(self, vec):
 
         x,y = vec
-        #vec = Point(vec)
         
         n_vertices = len(self.transformed_vertices)
         if n_vertices == 2:
@@ -194,10 +192,6 @@ class PlanarIsotropicMechanism(Mechanism):
                 k = 1/a
 
         return k
-    
-    #def _make_polygon(self, vertices):
-    #    hull = ConvexHull(vertices)
-    #    return Polygon(vertices[hull.vertices])
 
     def build_distribution(self, epsilon):
         self.epsilon = epsilon
