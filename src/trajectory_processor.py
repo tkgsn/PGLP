@@ -32,15 +32,21 @@ class TrajectoryProcessor():
             start = next_posi
         return traj   
     
-    def compute_possible_set(self, prior):
+    def compute_possible_set(self, prior, delta=0):
         
-        state_nos = np.where(prior>0)[0]
-        n_possible_loc = len(state_nos)
+        if delta == 0:
         
-        print("n_possible_loc", n_possible_loc)
+            state_nos = np.where(prior>0)[0]
+            n_possible_loc = len(state_nos)
+            #print("n_possible_loc", n_possible_loc)
             
-        return state_nos
+            return state_nos
         
+        else:
+            
+            state_nos, delta_X = self.compute_delta_set(prior, delta)
+            return state_nos
+
     
     def compute_delta_set(self, prior, delta):
         
@@ -69,8 +75,7 @@ class TrajectoryProcessor():
         for i, state_no in enumerate(state_nos):
             deltaX[i,state_no] = 1
             
-        print("num possible location:", n_possible_loc, state_nos)
-            
+        #print("num possible location:", n_possible_loc, state_nos)
             
         return state_nos, deltaX
         

@@ -15,7 +15,8 @@ class Mechanism():
         if not self.is_load:
             raise("you should initially load")
         
-        cell_true_loc = self._surrogate(cell_true_loc)
+        self.surrogated = self._surrogate(cell_true_loc)
+        cell_true_loc = self.surrogated
         
         return cell_true_loc + self.noise_generator()
     
@@ -37,7 +38,8 @@ class Mechanism():
         
         self.coords = coords
         self.state_nos = state_nos
-      
+        
+        self.state2coord = {state_no: coord for state_no, coord in zip(state_nos, coords)}
 
     def _check_included(self, cell_true_loc):
         return np.any(np.all(cell_true_loc == self.coords, axis=1))
@@ -47,7 +49,7 @@ class Mechanism():
         
         if not self._check_included(cell_true_loc):
             
-            surrogated_loc = self._find_nearest_loc(cell_true_loc)
+            surrogated_loc, _ = self._find_nearest_loc(cell_true_loc)
                     
             util.f.write("surrogate by:" + str(surrogated_loc) + "\n")
                     
@@ -60,21 +62,26 @@ class Mechanism():
         
         min_distance = float("inf")
         
-        for coord in self.coords:
+        for i, coord in enumerate(self.coords):
             distance = np.linalg.norm(cell_loc - coord)
+            
+            if distance == 0:
+                continue
+            
             if distance < min_distance:
                 min_distance = distance
                 surrogated_loc = coord
+                state_no = self.state_nos[i]
         
-        return surrogated_loc
+        return surrogated_loc, state_no
     
     def _make_sensitivities(self, coords):
         
         sensitivities = []
         
         size = len(coords)
-        for i in range(size-1):
-            for j in range(i+1,size):
+        for i in range(size):
+            for j in range(i,size):
                 sensitivities += self._compute_sensitivity(coords, i, j)
                 
         return np.array(sensitivities)
@@ -250,12 +257,11 @@ class PlanarIsotropicMechanism(Mechanism):
 
     def _compute_isotropic_transformation(self, vertices):
         
-        if len(vertices) == 2:
-            T = np.array([[1,0],[0,1]])
-            mean_vertices = np.average(vertices, axis=0)
-            return T, T
-
         try:
+            
+            if np.all(vertices == 0) or len(vertices) == 2:
+                raise
+                
             samples = self._sample_point_from_body(vertices, n_sample=self.iso_trans_sample_size)
 
             T = np.average([np.dot(sample.reshape(2,-1), sample.reshape(2,-1).T) for sample in samples], axis=0)
@@ -263,15 +269,15 @@ class PlanarIsotropicMechanism(Mechanism):
             T = scipy.linalg.sqrtm(T)
             T_i = np.linalg.inv(T)
 
-        except(np.linalg.LinAlgError):
+        except:
             T = np.array([[1,0],[0,1]])
             T_i = np.array([[1,0],[0,1]])
                 
         
-        if np.isnan(T).any():
-            print("nan")
-            T = np.array([[1,0],[0,1]])
-            T_i = np.array([[1,0],[0,1]]) 
+        #if np.isnan(T).any():
+        #    print("nan")
+        #    T = np.array([[1,0],[0,1]])
+        #    T_i = np.array([[1,0],[0,1]]) 
             
         return T, T_i
         
@@ -313,10 +319,12 @@ class PlanarIsotropicMechanism(Mechanism):
                             edges = (i,j)
                 return np.array([vertices[edges[0]], vertices[edges[1]]])
             
-    def _is_in(self, vertex):
-        diffs = self.coords - vertex
-        k_norm_of_diffs = np.array([self._k_norm(diff) for diff in diffs])
-        is_in = k_norm_of_diffs < 1
+            
+    def n_is_in(self, coord):
+        diffs = self.coords - coord
+        transformed_diffs = self._transform(diffs)
+        k_norm_of_diffs = np.array([self._k_norm(diff) for diff in transformed_diffs])
+        is_in = k_norm_of_diffs <= 1 + 1e-4
         n_is_in = np.sum(is_in)
         
         return n_is_in
