@@ -88,6 +88,7 @@ class Mechanism():
     
     def _compute_sensitivity(self, coords, i, j):
         return [(coords[i] - coords[j]), (coords[j] - coords[i])]
+            
         
 
 class LaplaceMechanism(Mechanism):
@@ -170,6 +171,41 @@ class PlanarIsotropicMechanism(Mechanism):
     def _transform(self, vertices):
         return np.dot(self.T, vertices.T).T
     
+    def _make_k_norm(self, vertices):
+        
+        def k_norm(vec):
+            x,y = vec
+
+            n_vertices = len(vertices)
+            if n_vertices == 2:
+                ks = (vec / vertices)
+                k = ks[0][0]
+                if np.isnan(k):
+                    k = ks[0][1]
+                return abs(k)
+
+            a = 0
+            k = 0
+
+            for i in range(n_vertices):
+                j = i+1
+                if j == n_vertices:
+                    j = 0
+                v1x, v1y = self.vertices[i][0], self.vertices[i][1]
+                v2x, v2y = self.vertices[j][0], self.vertices[j][1]
+
+                b = (v2x-(x/y)*v2y)/((x/y)*(v1y-v2y)-v1x+v2x)
+                if b>=0 and b<=1 :
+                    a = b/y*(v1y-v2y)+v2y/y
+                if a > 0:
+                    k = 1/a
+
+            return k
+        
+        return k_norm
+            
+        
+    
     def _k_norm(self, vec):
 
         x,y = vec
@@ -207,13 +243,17 @@ class PlanarIsotropicMechanism(Mechanism):
         vertices = self._make_convex_hull(sensitivities)
         self.T, self.T_i = self._compute_isotropic_transformation(vertices)
 
-        self.transformed_vertices = self._transform(vertices)
+        transformed_vertices = self._transform(vertices)
+        self.k_norm = self._make_k_norm(transformed_vertices)
+        
         self.transformed_coords = self._transform(self.coords)
         
-        ### For test
+        ### For debug
         
         self.sensitivities = sensitivities
+        self.transformed_vertices = transformed_vertices
         self.vertices = vertices
+        
         
         def k_norm_generator():
             
@@ -306,10 +346,12 @@ class PlanarIsotropicMechanism(Mechanism):
         else:
             try:
                 self.hull = ConvexHull(vertices)
+                self.on_line = False
                 return vertices[self.hull.vertices]
             
             except:
                 #print("Vertices are on linear (>=3)")
+                self.on_line = True
                 max_distance = -float("inf")
                 for i in range(len(vertices)-1):
                     for j in range(i+1, len(vertices)):
@@ -318,6 +360,30 @@ class PlanarIsotropicMechanism(Mechanism):
                             max_distance = distance
                             edges = (i,j)
                 return np.array([vertices[edges[0]], vertices[edges[1]]])
+            
+    def _compute_area_of_sensitivity_hull(self):
+        area = 0
+        
+        n_vertices = len(self.vertices)
+        
+        if n_vertices == 1:
+            return area
+        
+        if self.on_line or n_vertices == 2:
+            return np.linalg.norm(self.vertices[0] - self.vertices[1])
+        
+        for i in range(n_vertices):
+            if i == n_vertices:
+                j = 0
+            else:
+                j = i+1
+                
+            coord0 = self.vertices[i]
+            coord1 = self.vertices[j]
+            
+            area += (1/2)*np.abs(np.linalg.det(np.array([coord0,coord1])))
+        
+        return area
             
             
     def n_is_in(self, coord):
