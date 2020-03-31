@@ -15,6 +15,25 @@ dbname = os.path.join(data_dir, "peopleflow.sqlite")
 class MapProcessor():
     def __init__(self, n_x_lattice):
         self.n_x_lattice = n_x_lattice
+        
+    def make_graph(self, r=500):
+        
+        n_state = self.n_x_lattice * self.n_y_lattice
+        self.graph_mat = np.zeros((n_state, n_state))
+        
+        for counter, state_no in enumerate(self.possible_states[:-1]):
+            coord = self.state_to_coord(state_no)
+            for state_no_ in self.possible_states[counter+1:]:
+                coord_ = self.state_to_coord(state_no_)
+
+                distance = np.linalg.norm(coord - coord_) * self.lattice_length
+
+                if distance <= r:
+                    self.graph_mat[state_no,state_no_] = 1
+                    self.graph_mat[state_no_,state_no] = 1
+
+        #np.savetxt(os.path.join(data_dir, f"food.txt"), self.graph_mat)
+        
     
     def make_map(self, min_lon, max_lon, min_lat, max_lat, placeID=3):
         con = sqlite3.connect(dbname)
@@ -40,7 +59,6 @@ class MapProcessor():
             possible_states[i] = int(self._find_nearest_coord_from_latlon(latlon[::-1], self.all_states))
         self.possible_states = [int(state) for state in list(set(possible_states))]
         
-
     def coord_to_state(self, coord):
         return np.array(int(coord[0] + coord[1] * self.n_x_lattice))
 

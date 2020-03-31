@@ -144,10 +144,11 @@ def compute_area_of_sensitivity_hull(vertices):
 class GraphRepairer():
     def __init__(self, map_processor):
         self.map_processor = map_processor
+        self.load()
         
     
-    def load(self, graph_mat):
-        self.graph_mat = graph_mat
+    def load(self):
+        self.graph_mat = self.map_processor.graph_mat
         self.states = self.map_processor.possible_states
         
         self.set_of_connected_states = self._make_set_of_connected_states(self.states, self.graph_mat)
