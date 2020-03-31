@@ -33,13 +33,13 @@ class Mechanism():
             
         self.is_load = True
     
-    def load(self, coords, state_nos, n_locations=2500):
+    def load(self, coords, state_nos):
         self.is_load = True
+        
+        self.state2coord = {state_no: coord for state_no, coord in zip(state_nos, coords)}
         
         self.coords = coords
         self.state_nos = state_nos
-        
-        self.state2coord = {state_no: coord for state_no, coord in zip(state_nos, coords)}
 
     def _check_included(self, cell_true_loc):
         return np.any(np.all(cell_true_loc == self.coords, axis=1))
