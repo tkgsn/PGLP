@@ -1,4 +1,4 @@
-# PGLP
+# Policy Graph-based Location Privacy (PGLP)
 
 Technical Report: Customizable and Rigorous Location Privacy through Policy Graph
 
