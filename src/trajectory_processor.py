@@ -1,11 +1,12 @@
-#Generate tragectries
 import numpy as np
 import copy
 import math
+import map_processor
 
 
-class TrajectoryProcessor():
-    def __init__(self):
+class TrajectoryProcessor(map_processor.MapProcessor):
+    def __init__(self, n_x_lattice):
+        super().__init__(n_x_lattice)
         self.transition_mat = None
     
     def generate(self, len_traj):
@@ -46,7 +47,15 @@ class TrajectoryProcessor():
             
             state_nos, delta_X = self.compute_delta_set(prior, delta)
             return state_nos
-
+        
+    def update_graph_mat(self, possible_states):
+        updated_graph_mat = copy.deepcopy(self.graph_mat)
+        for state in range(len(updated_graph_mat)):
+            if state not in possible_states:
+                updated_graph_mat[state,:] = 0
+                updated_graph_mat[:, state] = 0
+        
+        return updated_graph_mat
     
     def compute_delta_set(self, prior, delta):
         
@@ -80,10 +89,6 @@ class TrajectoryProcessor():
         return state_nos, deltaX
         
     
-    def process(self, oh_locs):
-        return np.dot(self.query, oh_locs.T).T
-        
-    
     def compute_posterior_distribution(self, prior):
         if self.transition_mat is None:
             print("you must initially load")
@@ -94,27 +99,48 @@ class TrajectoryProcessor():
             print("end")
         
         return posterior
-        
     
-    def load(self, path_transition_mat, query=None, length_traj=500, size_traj=100, threashold=1e-4):
-        
-        transition_mat = np.loadtxt(path_transition_mat)
-        self.transition_mat = self._threash(transition_mat, threashold)
-        self.size = len(self.transition_mat)
-        
-        if query is not None:
-            self.query = copy.deepcopy(query)
-            ##### Strange operation!!!!!!!!!!
-            for i in range(2500):
-                if (math.floor(i/50) % 2) ==1:
-                    self.query[0, i] += 0.05
+    def traj_to_states(self, traj):
+        state_traj = []
+        for latlon in traj:
+            if not self._is_in_from_latlon(latlon):
+                continue
+            state = self._find_nearest_state_from_latlon_in_all_states(latlon)
+            state_traj.append(state)
+        return state_traj
     
-    def _threash(self, transition_mat, threashold):
-        transition_mat = copy.deepcopy(transition_mat)
-        transition_mat =  transition_mat * (transition_mat >= threashold)
-        transition_mat =  self._normalize(transition_mat)
-        return transition_mat
-    
+    def trajs_to_state_trajs(self, trajs):
+        state_trajs = []
+        for traj in trajs:
+            state_traj = self.traj_to_states(traj)
+            if len(state_traj) != 0:
+                state_trajs.append(state_traj)
+        return state_trajs
+        
+    def make_transmat_from_state_trajs(self, state_trajs):
+        transition_mat = np.zeros((self.n_x_lattice * self.n_y_lattice, self.n_x_lattice * self.n_y_lattice))
+        for state_traj in state_trajs:
+            pre_state = state_traj[0]
+            for state in state_traj[1:]:
+                transition_mat[pre_state, state] += 1
+                pre_state = state
+        self.transition_mat = self._normalize(transition_mat)
+        
+    def make_transmat_from_trajs(self, trajs):
+        transition_mat = np.zeros((self.n_x_lattice * self.n_y_lattice, self.n_x_lattice * self.n_y_lattice))
+        for traj in trajs:
+            pre_state = self._find_nearest_state_from_latlon_in_all_states(traj[0])
+            for latlon in traj:
+                if self._is_in_from_latlon(latlon):
+                    state = self._find_nearest_state_from_latlon_in_all_states(latlon)
+                    transition_mat[pre_state, state] += 1
+                    
+                    pre_state = state
+                else:
+                    break
+                    
+        self.transition_mat = self._normalize(transition_mat)
+        
     def _normalize(self, transition_mat):
         transition_mat = copy.deepcopy(transition_mat)
         for i, transition_prob in enumerate(transition_mat):
@@ -123,30 +149,28 @@ class TrajectoryProcessor():
                 transition_mat[i,:] = transition_mat[i,:]/sum_
         return transition_mat
     
-    def _choice(self):
-        while True:
-            choice = np.random.choice(range(len(self.transition_mat)))
-            sum_ = self.transition_mat[choice,:].sum()
-            n_non_zero = np.sum(self.transition_mat[choice,:] != 0)
-            if (sum_ != 0) and (n_non_zero > 2):
-                break
-        return choice      
     
-    def state2loc(self, states):
-        n_states = len(states)
-        oh_states = np.zeros((n_states, self.size))
-        for i, state in enumerate(states):
-            oh_states[i, state] = 1
+    def load_trans_mat(self, path_transition_mat, traj, threashold=1e-4):
         
-        return self.process(oh_states)
+        transition_mat = np.loadtxt(path_transition_mat)
+        self.transition_mat = self._threash(transition_mat, threashold)
+        self._modify_for_test_traj(traj)
+        self.size = len(self.transition_mat)
+        
+    
+    def _threash(self, transition_mat, threashold):
+        transition_mat = copy.deepcopy(transition_mat)
+        transition_mat =  transition_mat * (transition_mat >= threashold)
+        transition_mat =  self._normalize(transition_mat)
+        return transition_mat
     
     
-    def modify_for_test_traj(self, test_traj):
+    def _modify_for_test_traj(self, test_traj):
         for i in range(len(test_traj) - 1):
             pre_loc = test_traj[i]
             pos_loc = test_traj[i+1]
             if pre_loc != pos_loc:
                 self.transition_mat[pre_loc][pos_loc] += 0.1
                 
-        self.transition_mat[2485][2435] += 0.1
-        self.transition_mat = self._normalize(self.transition_mat)
+        #self.transition_mat[2485][2435] += 0.1
+        #self.transition_mat = self._normalize(self.transition_mat)

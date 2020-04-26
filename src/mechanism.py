@@ -5,7 +5,6 @@ import math
 import copy
 import joblib
 import os
-import util
 
 class Mechanism():
     def __init__(self):
@@ -51,8 +50,6 @@ class Mechanism():
             
             surrogated_loc, _ = self._find_nearest_loc(cell_true_loc)
                     
-            util.f.write("surrogate by:" + str(surrogated_loc) + "\n")
-                    
             return surrogated_loc
         
         else:
@@ -65,8 +62,8 @@ class Mechanism():
         for i, coord in enumerate(self.coords):
             distance = np.linalg.norm(cell_loc - coord)
             
-            if distance == 0:
-                continue
+            #if distance == 0:
+            #    continue
             
             if distance < min_distance:
                 min_distance = distance
@@ -109,9 +106,10 @@ class LaplaceMechanism(Mechanism):
     
     
     def build_distribution(self, epsilon):
+        self.epsilon = epsilon
+        
         sensitivities = self._make_sensitivities(self.coords)
         self.sensitivity = self._l1_sensitivity(sensitivities)
-        self.epsilon = epsilon
         
         def laplace():
             return np.random.laplace(0, self.sensitivity/self.epsilon, 2)
@@ -146,19 +144,12 @@ class PlanarIsotropicMechanism(Mechanism):
         
         inference_probs = {}
         
-        util.f.write(str(transformed_z) + "\n")
-        util.f.write(str(self.transformed_coords) + "\n")
-        util.f.write(str(self._transform(self.coords)) + "\n")
-        util.f.write(str(cell_z) + "\n")
-        util.f.write(str(self.coords) + "\n")
-
         for state_no, transformed_coord in zip(self.state_nos, self.transformed_coords):
             k = self._k_norm((transformed_z - transformed_coord))
             inference_probs[state_no] = np.exp(-self.epsilon * k) * prior_dist[state_no]
 
         inference_sum = np.sum(list(inference_probs.values()))
         
-        util.f.write("sum:" + str(inference_sum) + "\n")
         
         inference_probs = {state_no: prob/inference_sum for state_no, prob in inference_probs.items()}
 
@@ -217,6 +208,8 @@ class PlanarIsotropicMechanism(Mechanism):
             if np.isnan(k):
                 k = ks[0][1]
             return abs(k)
+        elif n_vertices == 1:
+            return 0
         
         a = 0
         k = 0
@@ -235,6 +228,29 @@ class PlanarIsotropicMechanism(Mechanism):
                 k = 1/a
 
         return k
+    
+    def compute_area_of_sensitivity_hull(self):
+        area = 0
+
+        sensitivities = self._make_sensitivities(self.coords)
+        vertices = self._make_convex_hull(sensitivities)
+        
+        n_vertices = len(vertices)
+
+        if n_vertices == 1:
+            return 0
+        elif n_vertices == 2:
+            return np.linalg.norm(vertices[0] - vertices[1])
+        else:
+            for i in range(n_vertices):
+                j = 0 if i == n_vertices-1 else i+1
+
+                coord0 = vertices[i]
+                coord1 = vertices[j]
+
+                area += (1/2)*np.abs(np.linalg.det(np.array([coord0,coord1])))
+
+            return area
 
     def build_distribution(self, epsilon):
         self.epsilon = epsilon
@@ -340,7 +356,7 @@ class PlanarIsotropicMechanism(Mechanism):
 
     def _make_convex_hull(self, vertices):
         
-        if len(self.coords) == 2:
+        if len(self.coords) <= 2:
             return vertices
         
         else:
@@ -397,6 +413,9 @@ class PlanarIsotropicMechanism(Mechanism):
             
 
     def _sample_point_from_body(self, vertices, n_sample=1):
+        
+        if len(self.coords) == 1:
+            return [self.coords[0]]
 
         x, y = vertices[:,0], vertices[:,1]
         
