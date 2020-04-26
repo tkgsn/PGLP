@@ -84,8 +84,6 @@ class TrajectoryProcessor(map_processor.MapProcessor):
         for i, state_no in enumerate(state_nos):
             deltaX[i,state_no] = 1
             
-        #print("num possible location:", n_possible_loc, state_nos)
-            
         return state_nos, deltaX
         
     
@@ -118,7 +116,7 @@ class TrajectoryProcessor(map_processor.MapProcessor):
         return state_trajs
         
     def make_transmat_from_state_trajs(self, state_trajs):
-        transition_mat = np.zeros((self.n_x_lattice * self.n_y_lattice, self.n_x_lattice * self.n_y_lattice))
+        transition_mat = np.zeros((self.n_state, self.n_state))
         for state_traj in state_trajs:
             pre_state = state_traj[0]
             for state in state_traj[1:]:
@@ -127,7 +125,7 @@ class TrajectoryProcessor(map_processor.MapProcessor):
         self.transition_mat = self._normalize(transition_mat)
         
     def make_transmat_from_trajs(self, trajs):
-        transition_mat = np.zeros((self.n_x_lattice * self.n_y_lattice, self.n_x_lattice * self.n_y_lattice))
+        transition_mat = np.zeros((self.n_state, self.n_state))
         for traj in trajs:
             pre_state = self._find_nearest_state_from_latlon_in_all_states(traj[0])
             for latlon in traj:
@@ -137,8 +135,7 @@ class TrajectoryProcessor(map_processor.MapProcessor):
                     
                     pre_state = state
                 else:
-                    break
-                    
+                    break             
         self.transition_mat = self._normalize(transition_mat)
         
     def _normalize(self, transition_mat):
@@ -171,6 +168,3 @@ class TrajectoryProcessor(map_processor.MapProcessor):
             pos_loc = test_traj[i+1]
             if pre_loc != pos_loc:
                 self.transition_mat[pre_loc][pos_loc] += 0.1
-                
-        #self.transition_mat[2485][2435] += 0.1
-        #self.transition_mat = self._normalize(self.transition_mat)

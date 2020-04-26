@@ -28,27 +28,6 @@ def distance_on_unit_sphere(latlon1, latlon2):
 
     return arc * R
 
-def nearest_repair_graph(mp, constrained_states):
-    
-    graph_mat = copy.deepcopy(mp.graph_mat)
-    
-    set_of_connected_states = MapProcessor.make_set_of_connected_states(constrained_states, graph_mat)
-    isolated_states = [state[0] for state in set_of_connected_states if len(state) == 1]
-
-    while isolated_states:
-        isolated_state = isolated_states[0]
-
-        nearest_state = mp.find_nearest_possible_state_other_than_own(isolated_state)
-
-        graph_mat[isolated_state, nearest_state] = 1
-        graph_mat[nearest_state, isolated_state] = 1
-
-        if nearest_state in isolated_states:
-            isolated_states.pop(isolated_states.index(nearest_state))
-        isolated_states.pop(0)
-            
-    return graph_mat
-
 def repair_graph(mp, constrained_states):
     pim_with_pg = mechanism_with_policy_graph.PlanarIsotropicMechanismWithPolicyGraph()
     
@@ -159,7 +138,7 @@ class MapProcessor():
         
         possible_states = np.zeros(len(latlons), dtype=np.int32)
         for i, latlon in enumerate(latlons):
-            possible_states[i] = int(self._find_nearest_state_from_latlon_in_all_states(latlon))
+            possible_states[i] = self._find_nearest_state_from_latlon_in_all_states(latlon)
         self.possible_states = [int(state) for state in list(set(possible_states))]
         self.possible_coords = self.states_to_coords(self.possible_states)
         
@@ -175,7 +154,7 @@ class MapProcessor():
         
         possible_states = np.zeros(len(latlons), dtype=np.int32)
         for i, latlon in enumerate(latlons):
-            possible_states[i] = int(self._find_nearest_state_from_latlon_in_all_states(latlon))
+            possible_states[i] = self._find_nearest_state_from_latlon_in_all_states(latlon)
         self.possible_states = [int(state) for state in list(set(possible_states))]
         self.possible_coords = self.states_to_coords(self.possible_states)
         
@@ -183,23 +162,26 @@ class MapProcessor():
         
         
     def make_area(self, n_split):
-        n_x_lattice_in_area = math.ceil(self.n_x_lattice/n_split)
-        #n_y_lattice_in_area = math.ceil(self.n_y_lattice/n_split)
+        n_x_lattice_in_area = math.floor((self.n_x_lattice + 1)/n_split)
         
-        n_area = math.ceil(self.n_x_lattice / n_x_lattice_in_area) * math.ceil(self.n_y_lattice / n_x_lattice_in_area)
+        n_x_area = math.ceil((self.n_x_lattice + 1) / n_x_lattice_in_area)
+        n_y_area = math.ceil((self.n_y_lattice + 1) / n_x_lattice_in_area)
+        
+        n_area = n_x_area * n_y_area
         
         def state_to_area_state(state):
             coord = self.state_to_coord(state)
             
             area_coord = [math.floor(coord[0]/n_x_lattice_in_area), math.floor(coord[1]/n_x_lattice_in_area)]
-            return area_coord[0] + area_coord[1] * n_split
+            return area_coord[0] + area_coord[1] * n_x_area
+        
+        self.state_to_area_state = state_to_area_state
             
         areas = [[] for _ in range(n_area)]
         for state in self.all_states:
             area_state = state_to_area_state(state)
             areas[area_state].append(state)
             
-        self.state_to_area_state = state_to_area_state
         self.areas = areas
         
     def is_same_area(self, state1, state2):
@@ -225,7 +207,7 @@ class MapProcessor():
             
         
     def cp_n_split(self, n_subgraph_x_nodes):
-        return math.ceil(self.n_x_lattice/n_subgraph_x_nodes)
+        return math.floor((self.n_x_lattice + 1)/n_subgraph_x_nodes)
                         
     def _update_graph_according_to_distance(self, states, r):
         
@@ -257,39 +239,19 @@ class MapProcessor():
         side_length = distance_on_unit_sphere((self.min_lat, self.min_lon), (self.max_lat, self.min_lon))
         self.lattice_length = bottom_length / self.n_x_lattice
         
-        self.x_multiplier = bottom_length/(self.max_lon - self.min_lon)
-        self.y_multiplier = side_length/(self.max_lat - self.min_lat)
-        
-        self.n_y_lattice = int(side_length / self.lattice_length) + 1
+        self.n_y_lattice = round(side_length / self.lattice_length)
+        self.n_state = (self.n_x_lattice + 1) * (self.n_y_lattice + 1)
 
-        self.all_states = list(range(self.n_x_lattice * self.n_y_lattice))
+        self.all_states = list(range(self.n_state))
         self.all_coords = self.states_to_coords(self.all_states)
         
-        n_state = self.n_x_lattice * self.n_y_lattice
-        self.graph_mat = np.zeros((n_state, n_state))
-
-    """
-    def make_map(self):
-        
-        self.n_y_lattice = self.n_x_lattice
-
-        self.all_states = list(range(self.n_x_lattice * self.n_y_lattice))
-        self.all_coords = self.states_to_coords(self.all_states)
-        
-        n_state = self.n_x_lattice * self.n_y_lattice
-        
-        ####
-        self.lattice_length = 340
-        ####
-        
-        self.graph_mat = np.zeros((n_state, n_state))
-    """
+        self.graph_mat = np.zeros((self.n_state, self.n_state))
         
     def coord_to_state(self, coord):
-        return np.array(int(coord[0] + coord[1] * self.n_x_lattice))
+        return int(coord[0] + coord[1] * (self.n_x_lattice + 1))
 
     def state_to_coord(self, state):
-        return np.array([state % self.n_x_lattice, int(state / self.n_x_lattice)])
+        return np.array([state % (self.n_x_lattice + 1), int(state / (self.n_x_lattice + 1))])
 
     def states_to_coords(self, states):
         return np.array([self.state_to_coord(state) for state in states])
@@ -298,14 +260,13 @@ class MapProcessor():
         return np.array([self.coord_to_state(coord) for coord in coords])
     
     def _find_nearest_state_from_latlon_in_all_states(self, latlon):
-        coord = (np.array([latlon[1], latlon[0]]) - np.array([self.min_lon, self.min_lat])) * np.array([self.x_multiplier, self.y_multiplier]) / self.lattice_length
-        if math.floor(coord[1]) >= self.n_y_lattice:
-            coord[1] = self.n_y_lattice - 1
+        coord = np.array([self.n_x_lattice, self.n_y_lattice]) * (np.array([latlon[1], latlon[0]]) - np.array([self.min_lon, self.min_lat])) / (np.array([self.max_lon - self.min_lon, self.max_lat - self.min_lat]))
+        state = int(self.coord_to_state([round(coord[0]), round(coord[1])]))
         return int(self.coord_to_state([round(coord[0]), round(coord[1])]))
         
     def _find_nearest_state_from_latlon(self, latlon, states):
         coords = self.states_to_coords(states)
-        coord = (np.array([latlon[1], latlon[0]]) - np.array([self.min_lon, self.min_lat])) * np.array([self.x_multiplier, self.y_multiplier]) / self.lattice_length
+        coord = np.array([self.n_x_lattice, self.n_y_lattice]) * (np.array([latlon[1], latlon[0]]) - np.array([self.min_lon, self.min_lat])) / (np.array([self.max_lon - self.min_lon, self.max_lat - self.min_lat]))
         distances = np.linalg.norm(coords - coord, axis=1)
         return states[np.argmin(distances)]
     
