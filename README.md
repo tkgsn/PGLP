@@ -25,7 +25,7 @@ This is implemented by Python 3.7.
 
 ## Reference
 
-- [VLDB 2020 demo] PANDA: Policy-aware Location Privacy for Epidemic Surveillance
+- [VLDB 2020 demo] PANDA: Policy-aware Location Privacy for Epidemic Surveillance.
 Yang Cao, Shun Takagi, Yonghui Xiao, Li Xiong, Masatoshi Yoshikawa
 
 
