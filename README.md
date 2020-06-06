@@ -22,3 +22,12 @@ Finally,  we conduct experiments on real-world datasets to verify the effectiven
 This code was used in the experiments of the above paper.
 This is implemented by Python 3.7.
 
+
+## Reference
+
+- [VLDB 2020 demo] PANDA: Policy-aware Location Privacy for Epidemic Surveillance
+Yang Cao, Shun Takagi, Yonghui Xiao, Li Xiong, Masatoshi Yoshikawa
+
+
+
+
