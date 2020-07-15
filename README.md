@@ -37,7 +37,8 @@ https://arxiv.org/abs/2005.00186
 
 ## Contributors
 
-Shun Takagi (Kyoto University) takagi.shun.45a@st.kyoto-u.ac.jp <br>
+Shun Takagi (Kyoto University) takagi.shun.45a@st.kyoto-u.ac.jp 
+
 Yang Cao (Kyoto University) yang@i.kyoto-u.ac.jp
 
 
