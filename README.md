@@ -25,20 +25,19 @@ This is implemented by Python 3.7.
 
 ## References
 
-- [ESORICS 2020] Customizable and Rigorous Location Privacy through Policy Graph.
-Yang Cao, Yonghui Xiao, Shun Takagi, Li Xiong, Masatoshi Yoshikawa, Yilin Shen, Jinfei Liu, Hongxia Jin, Xiaofeng Xu
+- [ESORICS 2020] Customizable and Rigorous Location Privacy through Policy Graph. <br>
+Yang Cao, Yonghui Xiao, Shun Takagi, Li Xiong, Masatoshi Yoshikawa, Yilin Shen, Jinfei Liu, Hongxia Jin, Xiaofeng Xu. <br>
 https://arxiv.org/abs/2005.01263
 
-- [VLDB 2020 demo] PANDA: Policy-aware Location Privacy for Epidemic Surveillance.
-Yang Cao, Shun Takagi, Yonghui Xiao, Li Xiong, Masatoshi Yoshikawa
+- [VLDB 2020 demo] PANDA: Policy-aware Location Privacy for Epidemic Surveillance. <br>
+Yang Cao, Shun Takagi, Yonghui Xiao, Li Xiong, Masatoshi Yoshikawa. <br>
 https://arxiv.org/abs/2005.00186
 
 
 
 ## Contributors
 
-Shun Takagi (Kyoto University) takagi.shun.45a@st.kyoto-u.ac.jp
-
+Shun Takagi (Kyoto University) takagi.shun.45a@st.kyoto-u.ac.jp <br>
 Yang Cao (Kyoto University) yang@i.kyoto-u.ac.jp
 
 
