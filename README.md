@@ -23,7 +23,7 @@ This code was used in the experiments of the above paper.
 This is implemented by Python 3.7.
 
 
-## Reference
+## References
 
 - [ESORICS 2020] Customizable and Rigorous Location Privacy through Policy Graph.
 Yang Cao, Yonghui Xiao, Shun Takagi, Li Xiong, Masatoshi Yoshikawa, Yilin Shen, Jinfei Liu, Hongxia Jin, Xiaofeng Xu
@@ -35,7 +35,7 @@ https://arxiv.org/abs/2005.00186
 
 
 
-## Contributor
+## Contributors
 
 Shun Takagi (Kyoto University) takagi.shun.45a@st.kyoto-u.ac.jp
 
