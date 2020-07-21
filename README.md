@@ -1,9 +1,5 @@
 # Policy Graph-based Location Privacy (PGLP)
 
-Technical Report: Customizable and Rigorous Location Privacy through Policy Graph
-
-https://www.db.soc.i.kyoto-u.ac.jp/~cao/pglp.pdf
-
 
 Location privacy has been extensively studied in the literature.
 However, existing location privacy models are either not rigorous or not customizable, which limits the trade-off between privacy and utility in many real-world applications.
