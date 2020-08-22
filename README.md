@@ -29,6 +29,8 @@ https://arxiv.org/abs/2005.01263
 Yang Cao, Shun Takagi, Yonghui Xiao, Li Xiong, Masatoshi Yoshikawa. <br>
 https://arxiv.org/abs/2005.00186
 
+A Demo of PGLP for Epidemiological Analysis: https://github.com/tkgsn/covid-demo
+
 
 
 ## Contributors
